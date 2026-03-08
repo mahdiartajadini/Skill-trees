@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skill Trees</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+/* ── HUB ── */
+#hub {
+  min-height:100vh; background:#111; font-family:'Outfit',sans-serif;
+  display:flex; flex-direction:column; align-items:center; padding:60px 40px 80px;
+  position:relative;
+}
+#hub::before {
+  content:''; position:fixed; inset:0;
+  background-image: linear-gradient(rgba(255,255,255,0.03) 1px,transparent 1px),
+                    linear-gradient(90deg,rgba(255,255,255,0.03) 1px,transparent 1px);
+  background-size:48px 48px; pointer-events:none; z-index:0;
+}
+.hub-header { position:relative; z-index:1; text-align:center; margin-bottom:56px; }
+.hub-eyebrow { font-size:11px; font-weight:600; letter-spacing:5px; text-transform:uppercase; color:rgba(255,255,255,0.3); margin-bottom:14px; }
+.hub-title { font-size:56px; font-weight:800; letter-spacing:-1px; color:#fff; line-height:1; }
+.hub-title span { background:linear-gradient(135deg,#a78bfa,#60a5fa,#34d399); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hub-sub { margin-top:14px; font-size:15px; color:rgba(255,255,255,0.4); }
+.hub-divider { width:60px; height:2px; background:linear-gradient(90deg,#a78bfa,#60a5fa); border-radius:2px; margin:22px auto 0; }
+.hub-grid {
+  position:relative; z-index:1;
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:22px; width:100%; max-width:1100px;
+}
+.card {
+  background:rgba(255,255,255,0.04); border:1.5px solid rgba(255,255,255,0.09);
+  border-radius:20px; padding:28px 24px 24px; cursor:pointer;
+  display:flex; flex-direction:column; gap:10px; position:relative; overflow:hidden;
+  transition:transform .22s ease, background .22s, border-color .22s, box-shadow .22s;
+  user-select:none;
+}
+.card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--cg); border-radius:20px 20px 0 0; }
+.card:hover { transform:translateY(-5px); background:rgba(255,255,255,0.07); border-color:rgba(255,255,255,0.18); box-shadow:0 20px 40px rgba(0,0,0,0.5); }
+.card-icon { font-size:34px; line-height:1; }
+.card-title { font-size:19px; font-weight:700; color:#fff; letter-spacing:0.4px; }
+.card-footer { margin-top:auto; padding-top:14px; border-top:1px solid rgba(255,255,255,0.07); display:flex; align-items:center; justify-content:space-between; }
+.card-tag { font-size:11px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; padding:4px 10px; border-radius:20px; background:var(--ctb); color:var(--ctc); }
+.card-arrow { color:rgba(255,255,255,0.25); font-size:17px; transition:color .2s, transform .2s; }
+.card:hover .card-arrow { color:rgba(255,255,255,0.7); transform:translateX(4px); }
+.hub-footer { position:relative; z-index:1; margin-top:56px; color:rgba(255,255,255,0.2); font-size:12px; letter-spacing:1px; text-transform:uppercase; }
+
+/* ── TREE VIEW ── */
+#tree-view {
+  display:none; position:fixed; inset:0;
+  font-family:'Outfit',sans-serif;
+}
+.tree-scope {
+  width:100vw; height:100vh; overflow:hidden;
+  background:var(--bg);
+}
+#viewport { width:100vw; height:100vh; overflow:hidden; position:relative; cursor:grab; }
+#viewport.dragging { cursor:grabbing; }
+#scene { position:absolute; top:0; left:0; transform-origin:0 0; will-change:transform; }
+#page { position:relative; margin:0; padding:0 40px 100px; }
+#back-btn {
+  position:fixed; top:18px; left:20px; z-index:30;
+  display:flex; align-items:center; gap:7px;
+  background:rgba(0,0,0,0.6); border:1.5px solid rgba(255,255,255,0.15);
+  border-radius:40px; padding:8px 16px 8px 12px;
+  color:#fff; font-size:13px; font-weight:600; letter-spacing:0.5px;
+  cursor:pointer; backdrop-filter:blur(10px);
+  transition:background .18s, border-color .18s; font-family:'Outfit',sans-serif;
+  user-select:none;
+}
+#back-btn:hover { background:rgba(255,255,255,0.1); border-color:rgba(255,255,255,0.3); }
+#zoom-controls { position:fixed; bottom:20px; right:24px; z-index:20; display:flex; flex-direction:column; gap:6px; align-items:center; }
+.zoom-btn { width:38px; height:38px; background:rgba(0,0,0,0.65); border:1.5px solid rgba(255,255,255,0.18); border-radius:8px; color:#fff; font-size:22px; font-weight:300; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background .15s; user-select:none; backdrop-filter:blur(8px); font-family:'Outfit',sans-serif; }
+.zoom-btn:hover { background:rgba(255,255,255,0.12); border-color:rgba(255,255,255,0.35); }
+#zoom-label { color:rgba(255,255,255,0.45); font-size:12px; font-weight:500; font-family:'Outfit',sans-serif; }
+.page-title { text-align:center; color:var(--chalk); font-size:36px; font-weight:700; letter-spacing:5px; text-transform:uppercase; padding:28px 0 8px; }
+.t-emoji { font-size:30px; margin-right:8px; }
+.title-line { width:86%; margin:0 auto; height:1.5px; background:linear-gradient(90deg,transparent,var(--chalk-dim),transparent); }
+#cv { position:absolute; top:0; left:0; pointer-events:none; z-index:0; }
+.node { position:absolute; transform:translate(-50%,-50%); z-index:2; cursor:pointer; user-select:none; }
+.box { display:flex; align-items:center; gap:7px; background:var(--box-bg); border:1.8px solid var(--box-border); border-radius:7px; white-space:nowrap; transition:background .2s,border-color .2s,box-shadow .2s; }
+.box:hover { background:rgba(255,255,255,0.1); }
+.box.checked { border-color:var(--checked-border); background:var(--checked-bg); }
+.ck { flex-shrink:0; border-radius:50%; border:1.8px solid var(--chalk-dim); display:flex; align-items:center; justify-content:center; color:transparent; transition:border-color .2s,background .2s,color .2s; }
+.box.checked .ck { border-color:var(--check-color); color:var(--check-color); }
+.lbl { color:var(--chalk); text-transform:uppercase; letter-spacing:1px; line-height:1; }
+.node.root .box { padding:12px 18px 12px 12px; border-width:2.5px; border-radius:10px; border-color:var(--accent); }
+.node.root .lbl { font-size:26px; font-weight:700; letter-spacing:4px; }
+.node.root .ck  { width:28px; height:28px; font-size:17px; }
+.node.l1 .box { padding:9px 14px 9px 10px; }
+.node.l1 .lbl { font-size:13px; font-weight:600; letter-spacing:2px; }
+.node.l1 .ck  { width:19px; height:19px; font-size:12px; }
+.node.l2 .box { padding:7px 11px 7px 8px; }
+.node.l2 .lbl { font-size:11px; font-weight:500; letter-spacing:1.2px; }
+.node.l2 .ck  { width:16px; height:16px; font-size:10px; }
+.node.l3 .box { padding:5px 10px 5px 7px; }
+.node.l3 .lbl { font-size:11px; font-weight:400; letter-spacing:0.8px; }
+.node.l3 .ck  { width:15px; height:15px; font-size:10px; }
+#prog { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:10; display:flex; align-items:center; gap:14px; background:rgba(0,0,0,0.88); border:1.5px solid rgba(255,255,255,0.12); border-radius:40px; padding:10px 26px; color:#fff; font-size:15px; font-weight:500; backdrop-filter:blur(10px); box-shadow:0 4px 28px rgba(0,0,0,0.6); font-family:'Outfit',sans-serif; }
+.prog-track { width:200px; height:7px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden; }
+.prog-fill { height:100%; background:var(--prog-grad); border-radius:4px; transition:width .35s; width:0%; }
+#search-bar { position:fixed; top:18px; left:50%; transform:translateX(-50%); z-index:20; width:320px; font-family:'Outfit',sans-serif; }
+#search-wrap { display:flex; align-items:center; gap:8px; background:rgba(0,0,0,0.88); border:1.5px solid rgba(255,255,255,0.18); border-radius:40px; padding:9px 16px; backdrop-filter:blur(12px); box-shadow:0 4px 24px rgba(0,0,0,0.5); transition:border-color .2s; }
+#search-wrap:focus-within { border-color:var(--accent); }
+#search-icon { color:rgba(255,255,255,0.35); font-size:20px; line-height:1; flex-shrink:0; }
+#search-input { flex:1; background:none; border:none; outline:none; color:#fff; font-family:'Outfit',sans-serif; font-size:14px; font-weight:500; }
+#search-input::placeholder { color:rgba(255,255,255,0.25); }
+#search-clear { display:none; background:none; border:none; color:rgba(255,255,255,0.35); font-size:13px; cursor:pointer; padding:0; flex-shrink:0; transition:color .15s; }
+#search-clear:hover { color:#fff; }
+#search-results { margin-top:6px; background:rgba(8,8,8,0.97); border:1.5px solid rgba(255,255,255,0.12); border-radius:14px; overflow:hidden; backdrop-filter:blur(12px); box-shadow:0 8px 28px rgba(0,0,0,0.7); max-height:280px; overflow-y:auto; display:none; }
+#search-results::-webkit-scrollbar { width:4px; }
+#search-results::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.15); border-radius:2px; }
+.search-result-item { display:flex; flex-direction:column; gap:2px; padding:10px 16px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.06); transition:background .15s; }
+.search-result-item:last-child { border-bottom:none; }
+.search-result-item:hover { background:rgba(255,255,255,0.07); }
+.sr-label { color:#fff; font-size:13px; font-weight:600; letter-spacing:0.8px; }
+.sr-label mark { background:rgba(80,160,255,0.25); color:#90c8ff; border-radius:3px; padding:0 1px; }
+.sr-path { color:rgba(255,255,255,0.3); font-size:11px; }
+.search-no-results { padding:14px 16px; color:rgba(255,255,255,0.3); font-size:13px; text-align:center; }
+@keyframes pulse-found {
+  0%   { box-shadow:0 0 0 0 rgba(80,160,255,0.9); border-color:rgba(80,160,255,1); }
+  40%  { box-shadow:0 0 0 14px rgba(80,160,255,0); }
+  60%  { box-shadow:0 0 0 0 rgba(80,160,255,0); border-color:rgba(80,160,255,0.6); }
+  80%  { box-shadow:0 0 0 8px rgba(80,160,255,0); }
+  100% { box-shadow:0 0 0 0 rgba(80,160,255,0); border-color:rgba(80,160,255,0.9); }
+}
+.node-found .box { border-color:rgba(80,160,255,0.9)!important; animation:pulse-found 0.6s ease 3; }
+.node-dimmed .box { opacity:0.15; transition:opacity 0.3s; }
+
+/* per-tree CSS variable overrides */
+
+  .tree-scope[data-tree="design"] {
+    --bg: #14111e;
+    --chalk: #f5f0ff;
+    --chalk-dim: rgba(245,240,255,0.45);
+    --box-bg: rgba(168,85,247,0.07);
+    --box-border: rgba(168,85,247,0.3);
+    --check-color: #c084fc;
+    --checked-border: rgba(192,132,252,0.85);
+    --checked-bg: rgba(168,85,247,0.14);
+    --accent: rgba(168,85,247,0.8);
+    --line-color: rgba(192,132,252,0.35);
+    --prog-grad: linear-gradient(90deg,#a855f7,#f472b6);
+  }
+
+  .tree-scope[data-tree="python"] {
+    --bg: #131a0e;
+    --chalk: #f0fde4;
+    --chalk-dim: rgba(240,253,228,0.45);
+    --box-bg: rgba(163,230,53,0.07);
+    --box-border: rgba(163,230,53,0.28);
+    --check-color: #a3e635;
+    --checked-border: rgba(163,230,53,0.85);
+    --checked-bg: rgba(163,230,53,0.13);
+    --accent: rgba(163,230,53,0.8);
+    --line-color: rgba(163,230,53,0.3);
+    --prog-grad: linear-gradient(90deg,#a3e635,#facc15);
+  }
+
+  .tree-scope[data-tree="blender"] {
+    --bg: #1a0f0a;
+    --chalk: #fff7f0;
+    --chalk-dim: rgba(255,247,240,0.45);
+    --box-bg: rgba(249,115,22,0.07);
+    --box-border: rgba(249,115,22,0.3);
+    --check-color: #fb923c;
+    --checked-border: rgba(251,146,60,0.85);
+    --checked-bg: rgba(249,115,22,0.13);
+    --accent: rgba(249,115,22,0.85);
+    --line-color: rgba(251,146,60,0.32);
+    --prog-grad: linear-gradient(90deg,#f97316,#ef4444);
+  }
+
+  .tree-scope[data-tree="music"] {
+    --bg: #0a1614;
+    --chalk: #f0fdf9;
+    --chalk-dim: rgba(240,253,249,0.45);
+    --box-bg: rgba(52,211,153,0.07);
+    --box-border: rgba(52,211,153,0.28);
+    --check-color: #34d399;
+    --checked-border: rgba(52,211,153,0.85);
+    --checked-bg: rgba(52,211,153,0.12);
+    --accent: rgba(52,211,153,0.85);
+    --line-color: rgba(52,211,153,0.3);
+    --prog-grad: linear-gradient(90deg,#34d399,#059669);
+  }
+
+  .tree-scope[data-tree="japanese"] {
+    --bg: #1a0a0a;
+    --chalk: #fff5f5;
+    --chalk-dim: rgba(255,245,245,0.45);
+    --box-bg: rgba(248,113,113,0.07);
+    --box-border: rgba(248,113,113,0.3);
+    --check-color: #f87171;
+    --checked-border: rgba(248,113,113,0.85);
+    --checked-bg: rgba(248,113,113,0.13);
+    --accent: rgba(248,113,113,0.85);
+    --line-color: rgba(248,113,113,0.3);
+    --prog-grad: linear-gradient(90deg,#f87171,#fb923c);
+  }
+
+  .tree-scope[data-tree="diy"] {
+    --bg: #0c1320;
+    --chalk: #f0f6ff;
+    --chalk-dim: rgba(240,246,255,0.45);
+    --box-bg: rgba(96,165,250,0.07);
+    --box-border: rgba(96,165,250,0.28);
+    --check-color: #60a5fa;
+    --checked-border: rgba(96,165,250,0.85);
+    --checked-bg: rgba(96,165,250,0.13);
+    --accent: rgba(96,165,250,0.85);
+    --line-color: rgba(96,165,250,0.3);
+    --prog-grad: linear-gradient(90deg,#60a5fa,#818cf8);
+  }
+
+  .tree-scope[data-tree="video"] {
+    --bg: #0e0e1a;
+    --chalk: #f0f0ff;
+    --chalk-dim: rgba(240,240,255,0.45);
+    --box-bg: rgba(99,102,241,0.07);
+    --box-border: rgba(99,102,241,0.32);
+    --check-color: #818cf8;
+    --checked-border: rgba(129,140,248,0.85);
+    --checked-bg: rgba(99,102,241,0.14);
+    --accent: rgba(99,102,241,0.85);
+    --line-color: rgba(129,140,248,0.32);
+    --prog-grad: linear-gradient(90deg,#6366f1,#a78bfa);
+  }
+
+  .tree-scope[data-tree="motion"] {
+    --bg: #0a1a14;
+    --chalk: #f0fff8;
+    --chalk-dim: rgba(240,255,248,0.45);
+    --box-bg: rgba(20,184,166,0.07);
+    --box-border: rgba(20,184,166,0.32);
+    --check-color: #2dd4bf;
+    --checked-border: rgba(45,212,191,0.85);
+    --checked-bg: rgba(20,184,166,0.14);
+    --accent: rgba(20,184,166,0.85);
+    --line-color: rgba(45,212,191,0.32);
+    --prog-grad: linear-gradient(90deg,#14b8a6,#34d399);
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ HUB ═══════════════ -->
+<div id="hub">
+  <header class="hub-header">
+    <p class="hub-eyebrow">Your Personal Knowledge Map</p>
+    <h1 class="hub-title">Skill <span>Trees</span></h1>
+    <p class="hub-sub">Pick a topic and track your progress through every sub-skill</p>
+    <div class="hub-divider"></div>
+  </header>
+  <div class="hub-grid">
+    
+      <div class="card" data-key="design" style="--cg:linear-gradient(90deg,#f472b6,#a855f7);--ctb:rgba(244,114,182,0.15);--ctc:#f9a8d4">
+        <div class="card-icon">🎨</div>
+        <div class="card-title">Graphic Design</div>
+        <div class="card-footer">
+          <span class="card-tag">Creative</span>
+          <span class="card-arrow">→</span>
+        </div>
+      </div>
+
+      <div class="card" data-key="python" style="--cg:linear-gradient(90deg,#facc15,#f97316);--ctb:rgba(250,204,21,0.12);--ctc:#fde68a">
+        <div class="card-icon">🐍</div>
+        <div class="card-title">Python</div>
+        <div class="card-footer">
+          <span class="card-tag">Code</span>
+          <span class="card-arrow">→</span>
+        </div>
+      </div>
+
+      <div class="card" data-key="blender" style="--cg:linear-gradient(90deg,#f97316,#ef4444);--ctb:rgba(249,115,22,0.14);--ctc:#fdba74">
+        <div class="card-icon">🧊</div>
+        <div class="card-title">Blender 3D</div>
+        <div class="card-footer">
+          <span class="card-tag">3D & VFX</span>
+          <span class="card-arrow">→</span>
+        </div>
+      </div>
+
+      <div class="card" data-key="music" style="--cg:linear-gradient(90deg,#34d399,#059669);--ctb:rgba(52,211,153,0.13);--ctc:#6ee7b7">
+        <div class="card-icon">🎵</div>
+        <div class="card-title">Music Production</div>
+        <div class="card-footer">
+          <span class="card-tag">Audio</span>
+          <span class="card-arrow">→</span>
+        </div>
+      </div>
+
+      <div class="card" data-key="japanese" style="--cg:linear-gradient(90deg,#f87171,#fb923c);--ctb:rgba(248,113,113,0.14);--ctc:#fca5a5">
+        <div class="card-icon">🇯🇵</div>
+        <div class="card-title">Japanese</div>
+        <div class="card-footer">
+          <span class="card-tag">Language</span>
+          <span class="card-arrow">→</span>
+        </div>
+      </div>
+
+      <div class="card" data-key="diy" style="--cg:linear-gradient(90deg,#60a5fa,#818cf8);--ctb:rgba(96,165,250,0.13);--ctc:#93c5fd">
+        <div class="card-icon">🔧</div>
+        <div class="card-title">DIY & Making</div>
+        <div class="card-footer">
+          <span class="card-tag">Hands-On</span>
+          <span class="card-arrow">→</span>
+        </div>
+      </div>
+
+      <div class="card" data-key="video" style="--cg:linear-gradient(90deg,#6366f1,#a78bfa);--ctb:rgba(99,102,241,0.13);--ctc:#a5b4fc">
+        <div class="card-icon">🎬</div>
+        <div class="card-title">Video Editing</div>
+        <div class="card-footer">
+          <span class="card-tag">Video</span>
+          <span class="card-arrow">→</span>
+        </div>
+      </div>
+
+      <div class="card" data-key="motion" style="--cg:linear-gradient(90deg,#14b8a6,#34d399);--ctb:rgba(20,184,166,0.13);--ctc:#5eead4">
+        <div class="card-icon">✨</div>
+        <div class="card-title">Motion Graphics</div>
+        <div class="card-footer">
+          <span class="card-tag">Motion</span>
+          <span class="card-arrow">→</span>
+        </div>
+      </div>
+  </div>
+  <p class="hub-footer">Click any card to open its skill tree</p>
+</div>
+
+<!-- ═══════════════ TREE VIEW ═══════════════ -->
+<div id="tree-view">
+  <div class="tree-scope" id="tree-scope">
+    <div id="viewport">
+      <div id="scene">
+        <div id="page">
+          <div class="page-title" id="tree-title"></div>
+          <div class="title-line"></div>
+          <canvas id="cv"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="back-btn">← All Trees</div>
+  <div id="zoom-controls">
+    <button class="zoom-btn" id="zoomIn">+</button>
+    <span id="zoom-label">100%</span>
+    <button class="zoom-btn" id="zoomOut">−</button>
+    <button class="zoom-btn" id="zoomReset" style="font-size:13px">FIT</button>
+  </div>
+  <div id="search-bar">
+    <div id="search-wrap">
+      <span id="search-icon">⌕</span>
+      <input id="search-input" type="text" placeholder="Search skills…" autocomplete="off" spellcheck="false"/>
+      <button id="search-clear">✕</button>
+    </div>
+    <div id="search-results"></div>
+  </div>
+  <div id="prog">
+    <span id="pTxt">0 / 0 done</span>
+    <div class="prog-track"><div class="prog-fill" id="pFill"></div></div>
+    <span id="pPct">0%</span>
+  </div>
+</div>
+
+<script>
+// ── all tree data ─────────────────────────────────────────────────────────
+const trees = {};
+const treeInfo = {};
+  trees['design'] = { id:'root', label:'GRAPHIC DESIGN', cls:'root', children:[
+    { id:'fundamentals', label:'DESIGN FUNDAMENTALS', cls:'l1', children:[
+      { id:'color', label:'COLOR THEORY', cls:'l2', children:[
+        {id:'col-wheel',label:'COLOR WHEEL',cls:'l3'},{id:'col-harmony',label:'COLOR HARMONIES',cls:'l3'},
+        {id:'col-models',label:'RGB / CMYK / HSL',cls:'l3'},{id:'col-mood',label:'COLOR PSYCHOLOGY',cls:'l3'},
+        {id:'col-contrast',label:'CONTRAST & RATIO',cls:'l3'},
+      ]},
+      { id:'typography', label:'TYPOGRAPHY', cls:'l2', children:[
+        {id:'typ-anatomy',label:'TYPE ANATOMY',cls:'l3'},{id:'typ-class',label:'TYPE CLASSIFICATION',cls:'l3'},
+        {id:'typ-pairing',label:'FONT PAIRING',cls:'l3'},{id:'typ-hier',label:'TYPE HIERARCHY',cls:'l3'},
+        {id:'typ-spacing',label:'KERNING & LEADING',cls:'l3'},{id:'typ-grid',label:'TYPOGRAPHIC GRID',cls:'l3'},
+      ]},
+      { id:'composition', label:'COMPOSITION', cls:'l2', children:[
+        {id:'com-rule3',label:'RULE OF THIRDS',cls:'l3'},{id:'com-golden',label:'GOLDEN RATIO',cls:'l3'},
+        {id:'com-balance',label:'BALANCE & WEIGHT',cls:'l3'},{id:'com-rhythm',label:'RHYTHM & REPETITION',cls:'l3'},
+        {id:'com-space',label:'NEGATIVE SPACE',cls:'l3'},{id:'com-flow',label:'VISUAL FLOW',cls:'l3'},
+      ]},
+      { id:'gestalt', label:'GESTALT PRINCIPLES', cls:'l2', children:[
+        {id:'ges-prox',label:'PROXIMITY',cls:'l3'},{id:'ges-sim',label:'SIMILARITY',cls:'l3'},
+        {id:'ges-cont',label:'CONTINUITY',cls:'l3'},{id:'ges-clos',label:'CLOSURE',cls:'l3'},
+      ]},
+    ]},
+    { id:'tools', label:'SOFTWARE & TOOLS', cls:'l1', children:[
+      { id:'affinity', label:'AFFINITY SUITE', cls:'l2', children:[
+        {id:'af-pub',label:'PUBLISHER',cls:'l3'},{id:'af-des',label:'DESIGNER',cls:'l3'},{id:'af-photo',label:'PHOTO',cls:'l3'},
+      ]},
+      { id:'adobe', label:'ADOBE SUITE', cls:'l2', children:[
+        {id:'ad-ps',label:'PHOTOSHOP',cls:'l3'},{id:'ad-ai',label:'ILLUSTRATOR',cls:'l3'},
+        {id:'ad-id',label:'INDESIGN',cls:'l3'},{id:'ad-ae',label:'AFTER EFFECTS',cls:'l3'},
+      ]},
+      { id:'figma', label:'FIGMA', cls:'l2', children:[
+        {id:'fig-comp',label:'COMPONENTS',cls:'l3'},{id:'fig-auto',label:'AUTO LAYOUT',cls:'l3'},
+        {id:'fig-proto',label:'PROTOTYPING',cls:'l3'},{id:'fig-var',label:'VARIABLES',cls:'l3'},
+      ]},
+    ]},
+    { id:'branding', label:'VISUAL IDENTITY & BRANDING', cls:'l1', children:[
+      { id:'logo', label:'LOGO DESIGN', cls:'l2', children:[
+        {id:'logo-word',label:'WORDMARK',cls:'l3'},{id:'logo-letter',label:'LETTERMARK',cls:'l3'},
+        {id:'logo-icon',label:'ICON / SYMBOL',cls:'l3'},{id:'logo-combo',label:'COMBINATION MARK',cls:'l3'},
+      ]},
+      { id:'brand-sys', label:'BRAND SYSTEMS', cls:'l2', children:[
+        {id:'br-pal',label:'COLOR PALETTE',cls:'l3'},{id:'br-typ',label:'BRAND TYPOGRAPHY',cls:'l3'},
+        {id:'br-voice',label:'BRAND VOICE',cls:'l3'},{id:'br-img',label:'IMAGE STYLE',cls:'l3'},
+      ]},
+      { id:'style-guide', label:'STYLE GUIDES', cls:'l2', children:[
+        {id:'sg-comp',label:'COMPONENT LIBRARY',cls:'l3'},{id:'sg-rules',label:'USAGE RULES',cls:'l3'},
+      ]},
+    ]},
+    { id:'uiux', label:'UI / UX DESIGN', cls:'l1', children:[
+      { id:'ux-research', label:'UX RESEARCH', cls:'l2', children:[
+        {id:'ux-persona',label:'USER PERSONAS',cls:'l3'},{id:'ux-journey',label:'USER JOURNEY MAPS',cls:'l3'},
+        {id:'ux-test',label:'USABILITY TESTING',cls:'l3'},
+      ]},
+      { id:'wireframe', label:'WIREFRAMING', cls:'l2', children:[
+        {id:'wf-lo',label:'LOW FIDELITY',cls:'l3'},{id:'wf-hi',label:'HIGH FIDELITY',cls:'l3'},
+      ]},
+      { id:'ui-design', label:'UI DESIGN', cls:'l2', children:[
+        {id:'ui-comp',label:'COMPONENT SYSTEMS',cls:'l3'},{id:'ui-ds',label:'DESIGN SYSTEMS',cls:'l3'},
+        {id:'ui-resp',label:'RESPONSIVE DESIGN',cls:'l3'},{id:'ui-acc',label:'ACCESSIBILITY',cls:'l3'},
+      ]},
+    ]},
+    { id:'illustration', label:'ILLUSTRATION & ART', cls:'l1', children:[
+      { id:'ill-vec', label:'VECTOR ILLUSTRATION', cls:'l2', children:[
+        {id:'vec-flat',label:'FLAT DESIGN',cls:'l3'},{id:'vec-iso',label:'ISOMETRIC',cls:'l3'},{id:'vec-line',label:'LINE ART',cls:'l3'},
+      ]},
+      { id:'lettering', label:'HAND LETTERING', cls:'l2', children:[
+        {id:'let-cal',label:'CALLIGRAPHY',cls:'l3'},{id:'let-brush',label:'BRUSH LETTERING',cls:'l3'},
+      ]},
+      { id:'icon-des', label:'ICON DESIGN', cls:'l2', children:[
+        {id:'ico-line',label:'LINE ICONS',cls:'l3'},{id:'ico-fill',label:'FILLED ICONS',cls:'l3'},{id:'ico-set',label:'ICON SETS',cls:'l3'},
+      ]},
+    ]},
+    { id:'print', label:'PRINT & EDITORIAL', cls:'l1', children:[
+      { id:'layout', label:'PAGE LAYOUT', cls:'l2', children:[
+        {id:'lay-mag',label:'MAGAZINE LAYOUT',cls:'l3'},{id:'lay-book',label:'BOOK DESIGN',cls:'l3'},
+      ]},
+      { id:'packaging', label:'PACKAGING DESIGN', cls:'l2', children:[
+        {id:'pkg-label',label:'LABEL DESIGN',cls:'l3'},{id:'pkg-box',label:'BOX & DIELINES',cls:'l3'},
+      ]},
+      { id:'prepress', label:'PRE-PRESS & PRINT', cls:'l2', children:[
+        {id:'pp-bleed',label:'BLEED & MARGINS',cls:'l3'},{id:'pp-proof',label:'COLOUR PROOFING',cls:'l3'},
+        {id:'pp-sep',label:'COLOUR SEPARATION',cls:'l3'},
+      ]},
+    ]},
+    { id:'professional', label:'PROFESSIONAL SKILLS', cls:'l1', children:[
+      { id:'portfolio', label:'PORTFOLIO', cls:'l2', children:[
+        {id:'pf-case',label:'CASE STUDIES',cls:'l3'},{id:'pf-pres',label:'PRESENTATION DECKS',cls:'l3'},
+        {id:'pf-web',label:'PORTFOLIO WEBSITE',cls:'l3'},
+      ]},
+      { id:'process', label:'DESIGN PROCESS', cls:'l2', children:[
+        {id:'pr-res',label:'RESEARCH & DISCOVERY',cls:'l3'},{id:'pr-idea',label:'IDEATION & SKETCHING',cls:'l3'},
+        {id:'pr-iter',label:'ITERATION',cls:'l3'},
+      ]},
+      { id:'pricing', label:'FREELANCE & BUSINESS', cls:'l2', children:[
+        {id:'fr-price',label:'PRICING YOUR WORK',cls:'l3'},{id:'fr-prop',label:'WRITING PROPOSALS',cls:'l3'},
+        {id:'fr-cont',label:'CONTRACTS',cls:'l3'},
+      ]},
+    ]},
+  ]};
+
+  trees['python'] = { id:'root', label:'PYTHON', cls:'root', children:[
+    { id:'basics', label:'FUNDAMENTALS', cls:'l1', children:[
+      { id:'syntax', label:'SYNTAX & BASICS', cls:'l2', children:[
+        {id:'var',label:'VARIABLES & TYPES',cls:'l3'},{id:'ops',label:'OPERATORS',cls:'l3'},
+        {id:'str',label:'STRINGS',cls:'l3'},{id:'inp',label:'INPUT / OUTPUT',cls:'l3'},
+      ]},
+      { id:'control', label:'CONTROL FLOW', cls:'l2', children:[
+        {id:'if',label:'IF / ELIF / ELSE',cls:'l3'},{id:'loops',label:'FOR & WHILE LOOPS',cls:'l3'},
+        {id:'break',label:'BREAK & CONTINUE',cls:'l3'},{id:'comp',label:'COMPREHENSIONS',cls:'l3'},
+      ]},
+      { id:'funcs', label:'FUNCTIONS', cls:'l2', children:[
+        {id:'def',label:'DEF & RETURN',cls:'l3'},{id:'args',label:'ARGS & KWARGS',cls:'l3'},
+        {id:'lambda',label:'LAMBDA',cls:'l3'},{id:'scope',label:'SCOPE & CLOSURES',cls:'l3'},
+      ]},
+      { id:'ds', label:'DATA STRUCTURES', cls:'l2', children:[
+        {id:'list',label:'LISTS',cls:'l3'},{id:'dict',label:'DICTIONARIES',cls:'l3'},
+        {id:'tup',label:'TUPLES',cls:'l3'},{id:'set',label:'SETS',cls:'l3'},
+      ]},
+    ]},
+    { id:'oop', label:'OOP', cls:'l1', children:[
+      { id:'classes', label:'CLASSES', cls:'l2', children:[
+        {id:'init',label:'__INIT__ & SELF',cls:'l3'},{id:'methods',label:'METHODS',cls:'l3'},{id:'props',label:'PROPERTIES',cls:'l3'},
+      ]},
+      { id:'inherit', label:'INHERITANCE', cls:'l2', children:[
+        {id:'super',label:'SUPER()',cls:'l3'},{id:'multi',label:'MULTIPLE INHERITANCE',cls:'l3'},{id:'mro',label:'MRO',cls:'l3'},
+      ]},
+      { id:'magic', label:'MAGIC METHODS', cls:'l2', children:[
+        {id:'repr',label:'__REPR__ / __STR__',cls:'l3'},{id:'eq',label:'__EQ__ / __LT__',cls:'l3'},
+        {id:'iter',label:'__ITER__ / __NEXT__',cls:'l3'},
+      ]},
+    ]},
+    { id:'advanced', label:'ADVANCED PYTHON', cls:'l1', children:[
+      { id:'decorators', label:'DECORATORS', cls:'l2', children:[
+        {id:'functools',label:'FUNCTOOLS.WRAPS',cls:'l3'},{id:'class-dec',label:'CLASS DECORATORS',cls:'l3'},
+      ]},
+      { id:'generators', label:'GENERATORS & ITERATORS', cls:'l2', children:[
+        {id:'yield',label:'YIELD',cls:'l3'},{id:'genexp',label:'GENERATOR EXPRESSIONS',cls:'l3'},{id:'itertools',label:'ITERTOOLS',cls:'l3'},
+      ]},
+      { id:'async', label:'ASYNC / AWAIT', cls:'l2', children:[
+        {id:'asyncio',label:'ASYNCIO',cls:'l3'},{id:'tasks',label:'TASKS & GATHER',cls:'l3'},{id:'aiohttp',label:'AIOHTTP',cls:'l3'},
+      ]},
+      { id:'typing', label:'TYPE HINTS', cls:'l2', children:[
+        {id:'annot',label:'ANNOTATIONS',cls:'l3'},{id:'mypy',label:'MYPY',cls:'l3'},{id:'pydantic',label:'PYDANTIC',cls:'l3'},
+      ]},
+    ]},
+    { id:'stdlib', label:'STANDARD LIBRARY', cls:'l1', children:[
+      { id:'fileio', label:'FILE I/O', cls:'l2', children:[
+        {id:'open',label:'OPEN & READ/WRITE',cls:'l3'},{id:'pathlib',label:'PATHLIB',cls:'l3'},{id:'shutil',label:'SHUTIL',cls:'l3'},
+      ]},
+      { id:'os-mod', label:'OS & SYSTEM', cls:'l2', children:[
+        {id:'os',label:'OS MODULE',cls:'l3'},{id:'subprocess',label:'SUBPROCESS',cls:'l3'},{id:'sys',label:'SYS MODULE',cls:'l3'},
+      ]},
+      { id:'re', label:'REGEX', cls:'l2', children:[
+        {id:'match',label:'MATCH & SEARCH',cls:'l3'},{id:'groups',label:'GROUPS',cls:'l3'},{id:'sub',label:'SUBSTITUTION',cls:'l3'},
+      ]},
+    ]},
+    { id:'data-sci', label:'DATA SCIENCE', cls:'l1', children:[
+      { id:'numpy', label:'NUMPY', cls:'l2', children:[
+        {id:'arr',label:'ARRAYS & SHAPES',cls:'l3'},{id:'ops-np',label:'ARRAY OPERATIONS',cls:'l3'},{id:'broadcast',label:'BROADCASTING',cls:'l3'},
+      ]},
+      { id:'pandas', label:'PANDAS', cls:'l2', children:[
+        {id:'df',label:'DATAFRAMES',cls:'l3'},{id:'clean',label:'DATA CLEANING',cls:'l3'},
+        {id:'groupby',label:'GROUP BY',cls:'l3'},{id:'merge',label:'MERGE & JOIN',cls:'l3'},
+      ]},
+      { id:'viz', label:'VISUALIZATION', cls:'l2', children:[
+        {id:'matplotlib',label:'MATPLOTLIB',cls:'l3'},{id:'seaborn',label:'SEABORN',cls:'l3'},{id:'plotly',label:'PLOTLY',cls:'l3'},
+      ]},
+    ]},
+    { id:'automation', label:'AUTOMATION', cls:'l1', children:[
+      { id:'scraping', label:'WEB SCRAPING', cls:'l2', children:[
+        {id:'bs4',label:'BEAUTIFULSOUP',cls:'l3'},{id:'selenium',label:'SELENIUM',cls:'l3'},{id:'scrapy',label:'SCRAPY',cls:'l3'},
+      ]},
+      { id:'scripts', label:'SCRIPTS & CLI', cls:'l2', children:[
+        {id:'click',label:'CLICK CLI',cls:'l3'},{id:'argparse',label:'ARGPARSE',cls:'l3'},{id:'cron',label:'SCHEDULING',cls:'l3'},
+      ]},
+    ]},
+    { id:'web', label:'WEB DEVELOPMENT', cls:'l1', children:[
+      { id:'flask', label:'FLASK', cls:'l2', children:[
+        {id:'routes',label:'ROUTES',cls:'l3'},{id:'templates',label:'JINJA2 TEMPLATES',cls:'l3'},{id:'forms',label:'FORMS',cls:'l3'},
+      ]},
+      { id:'fastapi', label:'FASTAPI', cls:'l2', children:[
+        {id:'endpoints',label:'ENDPOINTS',cls:'l3'},{id:'validation',label:'VALIDATION',cls:'l3'},{id:'auth',label:'AUTH & JWT',cls:'l3'},
+      ]},
+      { id:'db', label:'DATABASES', cls:'l2', children:[
+        {id:'sqlite',label:'SQLITE3',cls:'l3'},{id:'sqlalch',label:'SQLALCHEMY',cls:'l3'},{id:'psyco',label:'PSYCOPG2',cls:'l3'},
+      ]},
+    ]},
+    { id:'ml', label:'MACHINE LEARNING', cls:'l1', children:[
+      { id:'sklearn', label:'SCIKIT-LEARN', cls:'l2', children:[
+        {id:'preproc',label:'PREPROCESSING',cls:'l3'},{id:'models',label:'MODELS',cls:'l3'},{id:'eval',label:'EVALUATION',cls:'l3'},
+      ]},
+      { id:'torch', label:'PYTORCH', cls:'l2', children:[
+        {id:'tensors',label:'TENSORS',cls:'l3'},{id:'nn',label:'NEURAL NETS',cls:'l3'},{id:'train',label:'TRAINING LOOP',cls:'l3'},
+      ]},
+    ]},
+  ]};
+
+  trees['blender'] = { id:'root', label:'BLENDER 3D', cls:'root', children:[
+    { id:'interface', label:'INTERFACE & BASICS', cls:'l1', children:[
+      { id:'nav', label:'NAVIGATION', cls:'l2', children:[
+        {id:'orbit',label:'ORBIT & PAN',cls:'l3'},{id:'numpad',label:'NUMPAD VIEWS',cls:'l3'},{id:'modes',label:'EDIT / OBJECT MODE',cls:'l3'},
+      ]},
+      { id:'shortcuts', label:'SHORTCUTS', cls:'l2', children:[
+        {id:'transform',label:'G / R / S',cls:'l3'},{id:'select',label:'SELECT TOOLS',cls:'l3'},{id:'pie',label:'PIE MENUS',cls:'l3'},
+      ]},
+      { id:'collections', label:'SCENE MANAGEMENT', cls:'l2', children:[
+        {id:'coll',label:'COLLECTIONS',cls:'l3'},{id:'outliner',label:'OUTLINER',cls:'l3'},{id:'linking',label:'LINKING & APPENDING',cls:'l3'},
+      ]},
+    ]},
+    { id:'modeling', label:'MODELING', cls:'l1', children:[
+      { id:'mesh', label:'MESH MODELING', cls:'l2', children:[
+        {id:'verts',label:'VERTS / EDGES / FACES',cls:'l3'},{id:'loop',label:'LOOP CUTS',cls:'l3'},
+        {id:'extrude',label:'EXTRUDE & INSET',cls:'l3'},{id:'bevel',label:'BEVEL',cls:'l3'},
+      ]},
+      { id:'sculpt', label:'SCULPTING', cls:'l2', children:[
+        {id:'dyntopo',label:'DYNTOPO',cls:'l3'},{id:'multires',label:'MULTIRES',cls:'l3'},
+        {id:'brushes',label:'BRUSHES',cls:'l3'},{id:'masking',label:'MASKING',cls:'l3'},
+      ]},
+      { id:'modifiers', label:'MODIFIERS', cls:'l2', children:[
+        {id:'subdiv',label:'SUBDIVISION SURF',cls:'l3'},{id:'mirror',label:'MIRROR',cls:'l3'},
+        {id:'boolean',label:'BOOLEAN',cls:'l3'},{id:'array',label:'ARRAY',cls:'l3'},{id:'solidify',label:'SOLIDIFY',cls:'l3'},
+      ]},
+      { id:'geo-nodes', label:'GEOMETRY NODES', cls:'l2', children:[
+        {id:'gn-basics',label:'NODE BASICS',cls:'l3'},{id:'gn-instancing',label:'INSTANCING',cls:'l3'},{id:'gn-fields',label:'FIELDS',cls:'l3'},
+      ]},
+    ]},
+    { id:'shading', label:'SHADING & MATERIALS', cls:'l1', children:[
+      { id:'shader-ed', label:'SHADER EDITOR', cls:'l2', children:[
+        {id:'principled',label:'PRINCIPLED BSDF',cls:'l3'},{id:'emission',label:'EMISSION',cls:'l3'},{id:'mix',label:'MIX SHADER',cls:'l3'},
+      ]},
+      { id:'textures', label:'TEXTURES', cls:'l2', children:[
+        {id:'uv',label:'UV UNWRAPPING',cls:'l3'},{id:'tex-paint',label:'TEXTURE PAINTING',cls:'l3'},
+        {id:'proc-tex',label:'PROCEDURAL TEXTURES',cls:'l3'},{id:'normal',label:'NORMAL MAPS',cls:'l3'},
+      ]},
+    ]},
+    { id:'lighting', label:'LIGHTING', cls:'l1', children:[
+      { id:'lights', label:'LIGHT TYPES', cls:'l2', children:[
+        {id:'point',label:'POINT LIGHT',cls:'l3'},{id:'sun',label:'SUN LIGHT',cls:'l3'},
+        {id:'area',label:'AREA LIGHT',cls:'l3'},{id:'spot',label:'SPOT LIGHT',cls:'l3'},
+      ]},
+      { id:'hdri', label:'HDRI & ENVIRONMENT', cls:'l2', children:[
+        {id:'world',label:'WORLD SETTINGS',cls:'l3'},{id:'hdri-map',label:'HDRI MAPS',cls:'l3'},{id:'sky',label:'SKY TEXTURE',cls:'l3'},
+      ]},
+    ]},
+    { id:'rigging', label:'RIGGING & ANIMATION', cls:'l1', children:[
+      { id:'armature', label:'ARMATURES', cls:'l2', children:[
+        {id:'bones',label:'BONES',cls:'l3'},{id:'ik',label:'INVERSE KINEMATICS',cls:'l3'},{id:'constraints',label:'CONSTRAINTS',cls:'l3'},
+      ]},
+      { id:'animation', label:'ANIMATION', cls:'l2', children:[
+        {id:'keyframes',label:'KEYFRAMES',cls:'l3'},{id:'nla',label:'NLA EDITOR',cls:'l3'},
+        {id:'graph-ed',label:'GRAPH EDITOR',cls:'l3'},{id:'drivers',label:'DRIVERS',cls:'l3'},
+      ]},
+    ]},
+    { id:'rendering', label:'RENDERING', cls:'l1', children:[
+      { id:'cycles', label:'CYCLES', cls:'l2', children:[
+        {id:'samples',label:'SAMPLES',cls:'l3'},{id:'denoising',label:'DENOISING',cls:'l3'},{id:'gpu',label:'GPU RENDERING',cls:'l3'},
+      ]},
+      { id:'eevee', label:'EEVEE', cls:'l2', children:[
+        {id:'bloom',label:'BLOOM',cls:'l3'},{id:'ssr',label:'SCREEN SPACE REFL',cls:'l3'},{id:'ssao',label:'AMBIENT OCCLUSION',cls:'l3'},
+      ]},
+      { id:'compositor', label:'COMPOSITOR', cls:'l2', children:[
+        {id:'render-pass',label:'RENDER PASSES',cls:'l3'},{id:'glare',label:'GLARE NODE',cls:'l3'},{id:'color-grade',label:'COLOR GRADING',cls:'l3'},
+      ]},
+    ]},
+    { id:'vfx', label:'VFX & SIMULATION', cls:'l1', children:[
+      { id:'particles', label:'PARTICLES', cls:'l2', children:[
+        {id:'emitter',label:'EMITTER',cls:'l3'},{id:'hair',label:'HAIR PARTICLES',cls:'l3'},{id:'forces',label:'FORCE FIELDS',cls:'l3'},
+      ]},
+      { id:'physics', label:'PHYSICS', cls:'l2', children:[
+        {id:'rigid',label:'RIGID BODY',cls:'l3'},{id:'cloth',label:'CLOTH SIM',cls:'l3'},
+        {id:'fluid',label:'FLUID SIM',cls:'l3'},{id:'smoke',label:'SMOKE & FIRE',cls:'l3'},
+      ]},
+    ]},
+  ]};
+
+  trees['music'] = { id:'root', label:'MUSIC PRODUCTION', cls:'root', children:[
+    { id:'theory', label:'MUSIC THEORY', cls:'l1', children:[
+      { id:'notes', label:'NOTES & SCALES', cls:'l2', children:[
+        {id:'chromatic',label:'CHROMATIC SCALE',cls:'l3'},{id:'major',label:'MAJOR SCALE',cls:'l3'},
+        {id:'minor',label:'MINOR SCALE',cls:'l3'},{id:'modes',label:'MODES',cls:'l3'},
+      ]},
+      { id:'chords', label:'CHORDS & HARMONY', cls:'l2', children:[
+        {id:'triads',label:'TRIADS',cls:'l3'},{id:'7th',label:'7TH CHORDS',cls:'l3'},
+        {id:'prog',label:'CHORD PROGRESSIONS',cls:'l3'},{id:'voice',label:'VOICE LEADING',cls:'l3'},
+      ]},
+      { id:'rhythm', label:'RHYTHM & METER', cls:'l2', children:[
+        {id:'time-sig',label:'TIME SIGNATURES',cls:'l3'},{id:'syncopation',label:'SYNCOPATION',cls:'l3'},{id:'polyrhythm',label:'POLYRHYTHM',cls:'l3'},
+      ]},
+      { id:'song-str', label:'SONG STRUCTURE', cls:'l2', children:[
+        {id:'intro',label:'INTRO / VERSE / CHORUS',cls:'l3'},{id:'bridge',label:'BRIDGE & BREAKDOWN',cls:'l3'},{id:'drop',label:'BUILD-UP & DROP',cls:'l3'},
+      ]},
+    ]},
+    { id:'daw', label:'DAW SKILLS', cls:'l1', children:[
+      { id:'daw-basics', label:'DAW SOFTWARE', cls:'l2', children:[
+        {id:'fl-studio',label:'FL STUDIO',cls:'l3'},{id:'ableton',label:'ABLETON LIVE',cls:'l3'},
+        {id:'logic',label:'LOGIC PRO',cls:'l3'},{id:'reaper',label:'REAPER',cls:'l3'},
+      ]},
+      { id:'midi', label:'MIDI', cls:'l2', children:[
+        {id:'piano-roll',label:'PIANO ROLL',cls:'l3'},{id:'vel',label:'VELOCITY',cls:'l3'},
+        {id:'cc',label:'CC AUTOMATION',cls:'l3'},{id:'quantize',label:'QUANTIZATION',cls:'l3'},
+      ]},
+      { id:'arrangement', label:'ARRANGEMENT', cls:'l2', children:[
+        {id:'clips',label:'CLIPS & PATTERNS',cls:'l3'},{id:'automation',label:'AUTOMATION',cls:'l3'},{id:'scenes',label:'SCENES',cls:'l3'},
+      ]},
+    ]},
+    { id:'sound-design', label:'SOUND DESIGN', cls:'l1', children:[
+      { id:'synthesis', label:'SYNTHESIS', cls:'l2', children:[
+        {id:'subtractive',label:'SUBTRACTIVE',cls:'l3'},{id:'fm',label:'FM SYNTHESIS',cls:'l3'},
+        {id:'wavetable',label:'WAVETABLE',cls:'l3'},{id:'granular',label:'GRANULAR',cls:'l3'},
+      ]},
+      { id:'sampling', label:'SAMPLING', cls:'l2', children:[
+        {id:'chop',label:'CHOPPING SAMPLES',cls:'l3'},{id:'timestretch',label:'TIME STRETCHING',cls:'l3'},{id:'looping',label:'LOOP CREATION',cls:'l3'},
+      ]},
+      { id:'drums', label:'DRUM DESIGN', cls:'l2', children:[
+        {id:'kick',label:'KICK DESIGN',cls:'l3'},{id:'snare',label:'SNARE DESIGN',cls:'l3'},
+        {id:'hi-hat',label:'HI-HATS',cls:'l3'},{id:'percs',label:'PERCUSSION',cls:'l3'},
+      ]},
+    ]},
+    { id:'mixing', label:'MIXING', cls:'l1', children:[
+      { id:'eq', label:'EQ', cls:'l2', children:[
+        {id:'freq',label:'FREQUENCY RANGES',cls:'l3'},{id:'cut',label:'HIGH / LOW PASS',cls:'l3'},{id:'mid-side',label:'MID-SIDE EQ',cls:'l3'},
+      ]},
+      { id:'dynamics', label:'DYNAMICS', cls:'l2', children:[
+        {id:'compression',label:'COMPRESSION',cls:'l3'},{id:'limiting',label:'LIMITING',cls:'l3'},{id:'transient',label:'TRANSIENT SHAPING',cls:'l3'},
+      ]},
+      { id:'space', label:'SPACE & DEPTH', cls:'l2', children:[
+        {id:'reverb',label:'REVERB',cls:'l3'},{id:'delay',label:'DELAY',cls:'l3'},
+        {id:'panning',label:'STEREO PANNING',cls:'l3'},{id:'width',label:'STEREO WIDTH',cls:'l3'},
+      ]},
+    ]},
+    { id:'mastering', label:'MASTERING', cls:'l1', children:[
+      { id:'master-chain', label:'MASTER CHAIN', cls:'l2', children:[
+        {id:'master-eq',label:'MASTERING EQ',cls:'l3'},{id:'multiband',label:'MULTIBAND COMP',cls:'l3'},{id:'master-lim',label:'TRUE PEAK LIMITER',cls:'l3'},
+      ]},
+      { id:'loudness', label:'LOUDNESS & FORMAT', cls:'l2', children:[
+        {id:'lufs',label:'LUFS STANDARDS',cls:'l3'},{id:'dithering',label:'DITHERING',cls:'l3'},{id:'stems',label:'STEM EXPORT',cls:'l3'},
+      ]},
+    ]},
+    { id:'music-biz', label:'MUSIC BUSINESS', cls:'l1', children:[
+      { id:'release', label:'RELEASING MUSIC', cls:'l2', children:[
+        {id:'distro',label:'DISTRIBUTION',cls:'l3'},{id:'metadata',label:'METADATA & ISRC',cls:'l3'},{id:'artwork',label:'COVER ARTWORK',cls:'l3'},
+      ]},
+      { id:'rights', label:'RIGHTS & LICENSING', cls:'l2', children:[
+        {id:'copyright',label:'COPYRIGHT',cls:'l3'},{id:'royalties',label:'ROYALTIES',cls:'l3'},{id:'sync',label:'SYNC LICENSING',cls:'l3'},
+      ]},
+    ]},
+  ]};
+
+  trees['japanese'] = { id:'root', label:'JAPANESE', cls:'root', children:[
+    { id:'writing', label:'WRITING SYSTEMS', cls:'l1', children:[
+      { id:'hiragana', label:'HIRAGANA', cls:'l2', children:[
+        {id:'hira-vowels',label:'VOWELS (A I U E O)',cls:'l3'},{id:'hira-k',label:'K-ROW',cls:'l3'},
+        {id:'hira-daku',label:'DAKUTEN / HANDAKUTEN',cls:'l3'},{id:'hira-combo',label:'COMBINATION CHARS',cls:'l3'},
+      ]},
+      { id:'katakana', label:'KATAKANA', cls:'l2', children:[
+        {id:'kata-basic',label:'BASIC 46 CHARS',cls:'l3'},{id:'kata-loan',label:'LOANWORDS',cls:'l3'},{id:'kata-foreign',label:'FOREIGN NAMES',cls:'l3'},
+      ]},
+      { id:'kanji', label:'KANJI', cls:'l2', children:[
+        {id:'radicals',label:'RADICALS (BUSHU)',cls:'l3'},{id:'readings',label:'ON / KUN READINGS',cls:'l3'},
+        {id:'stroke',label:'STROKE ORDER',cls:'l3'},{id:'n5-k',label:'JLPT N5 KANJI',cls:'l3'},{id:'n4-k',label:'JLPT N4 KANJI',cls:'l3'},
+      ]},
+    ]},
+    { id:'grammar', label:'GRAMMAR', cls:'l1', children:[
+      { id:'particles', label:'PARTICLES', cls:'l2', children:[
+        {id:'wa-ga',label:'は vs が',cls:'l3'},{id:'wo',label:'を (OBJECT)',cls:'l3'},
+        {id:'ni-de',label:'に vs で',cls:'l3'},{id:'mo-ka',label:'も / か / よ / ね',cls:'l3'},
+      ]},
+      { id:'verbs', label:'VERBS', cls:'l2', children:[
+        {id:'ru-u',label:'RU-VERBS vs U-VERBS',cls:'l3'},{id:'te-form',label:'TE-FORM',cls:'l3'},
+        {id:'tai',label:'〜たい (WANT TO)',cls:'l3'},{id:'potential',label:'POTENTIAL FORM',cls:'l3'},
+        {id:'passive',label:'PASSIVE & CAUSATIVE',cls:'l3'},
+      ]},
+      { id:'adjectives', label:'ADJECTIVES', cls:'l2', children:[
+        {id:'i-adj',label:'I-ADJECTIVES',cls:'l3'},{id:'na-adj',label:'NA-ADJECTIVES',cls:'l3'},{id:'adj-conj',label:'CONJUGATION',cls:'l3'},
+      ]},
+      { id:'sentence', label:'SENTENCE PATTERNS', cls:'l2', children:[
+        {id:'sov',label:'SOV STRUCTURE',cls:'l3'},{id:'relative',label:'RELATIVE CLAUSES',cls:'l3'},
+        {id:'conditionals',label:'CONDITIONALS (と/ば/たら/なら)',cls:'l3'},
+      ]},
+      { id:'keigo', label:'KEIGO (POLITENESS)', cls:'l2', children:[
+        {id:'teineigo',label:'TEINEIGO (POLITE)',cls:'l3'},{id:'sonkeigo',label:'SONKEIGO (HONORIFIC)',cls:'l3'},{id:'kenjogo',label:'KENJOGO (HUMBLE)',cls:'l3'},
+      ]},
+    ]},
+    { id:'vocab', label:'VOCABULARY', cls:'l1', children:[
+      { id:'jlpt-vocab', label:'JLPT LEVELS', cls:'l2', children:[
+        {id:'n5',label:'JLPT N5 (~800 WORDS)',cls:'l3'},{id:'n4',label:'JLPT N4 (~1500)',cls:'l3'},
+        {id:'n3',label:'JLPT N3 (~3750)',cls:'l3'},{id:'n2',label:'JLPT N2 (~6000)',cls:'l3'},
+      ]},
+      { id:'daily-vocab', label:'DAILY VOCAB', cls:'l2', children:[
+        {id:'numbers',label:'NUMBERS & COUNTERS',cls:'l3'},{id:'time',label:'TIME & DATES',cls:'l3'},
+        {id:'colors',label:'COLORS & SHAPES',cls:'l3'},{id:'food',label:'FOOD & DRINK',cls:'l3'},
+      ]},
+      { id:'anki', label:'SRS & ANKI', cls:'l2', children:[
+        {id:'deck',label:'DECK SETUP',cls:'l3'},{id:'intervals',label:'INTERVALS',cls:'l3'},{id:'sentences',label:'SENTENCE CARDS',cls:'l3'},
+      ]},
+    ]},
+    { id:'listening', label:'LISTENING & SPEAKING', cls:'l1', children:[
+      { id:'pitch', label:'PITCH ACCENT', cls:'l2', children:[
+        {id:'heiban',label:'HEIBAN PATTERN',cls:'l3'},{id:'atamadaka',label:'ATAMADAKA',cls:'l3'},{id:'nakadaka',label:'NAKADAKA',cls:'l3'},
+      ]},
+      { id:'shadowing', label:'SHADOWING', cls:'l2', children:[
+        {id:'animesr',label:'ANIME & DRAMA',cls:'l3'},{id:'podcasts',label:'JAPANESE PODCASTS',cls:'l3'},{id:'condensed',label:'CONDENSED AUDIO',cls:'l3'},
+      ]},
+      { id:'speaking-pr', label:'SPEAKING PRACTICE', cls:'l2', children:[
+        {id:'italki',label:'ITALKI / TEACHERS',cls:'l3'},{id:'hellotalk',label:'HELLOTALK',cls:'l3'},{id:'self-talk',label:'SELF-TALK',cls:'l3'},
+      ]},
+    ]},
+    { id:'reading', label:'READING & IMMERSION', cls:'l1', children:[
+      { id:'reading-levels', label:'READING LEVELS', cls:'l2', children:[
+        {id:'graded',label:'GRADED READERS',cls:'l3'},{id:'manga',label:'MANGA (EASY)',cls:'l3'},
+        {id:'novels',label:'LIGHT NOVELS',cls:'l3'},{id:'news',label:'NHK WEB EASY',cls:'l3'},
+      ]},
+      { id:'immersion', label:'IMMERSION', cls:'l2', children:[
+        {id:'passive',label:'PASSIVE LISTENING',cls:'l3'},{id:'active',label:'ACTIVE IMMERSION',cls:'l3'},{id:'yomichan',label:'YOMITAN',cls:'l3'},
+      ]},
+    ]},
+  ]};
+
+  trees['diy'] = { id:'root', label:'DIY & MAKING', cls:'root', children:[
+    { id:'tools', label:'TOOLS & SAFETY', cls:'l1', children:[
+      { id:'hand-tools', label:'HAND TOOLS', cls:'l2', children:[
+        {id:'measure',label:'MEASURING & MARKING',cls:'l3'},{id:'cutting',label:'SAWS & CUTTING',cls:'l3'},
+        {id:'fastening',label:'SCREWDRIVERS & WRENCHES',cls:'l3'},{id:'clamping',label:'CLAMPS & VICES',cls:'l3'},
+      ]},
+      { id:'power-tools', label:'POWER TOOLS', cls:'l2', children:[
+        {id:'drill',label:'DRILL & DRIVER',cls:'l3'},{id:'jigsaw',label:'JIGSAW',cls:'l3'},
+        {id:'sander',label:'ORBITAL SANDER',cls:'l3'},{id:'router',label:'ROUTER',cls:'l3'},
+      ]},
+      { id:'safety', label:'WORKSHOP SAFETY', cls:'l2', children:[
+        {id:'ppe',label:'PPE (EAR / EYE / DUST)',cls:'l3'},{id:'fire',label:'FIRE SAFETY',cls:'l3'},{id:'electr-safe',label:'ELECTRICAL SAFETY',cls:'l3'},
+      ]},
+    ]},
+    { id:'woodworking', label:'WOODWORKING', cls:'l1', children:[
+      { id:'wood-basics', label:'WOOD BASICS', cls:'l2', children:[
+        {id:'species',label:'WOOD SPECIES',cls:'l3'},{id:'grain',label:'GRAIN & FIGURE',cls:'l3'},{id:'sheet',label:'SHEET GOODS (PLYWOOD/MDF)',cls:'l3'},
+      ]},
+      { id:'joinery', label:'JOINERY', cls:'l2', children:[
+        {id:'butt',label:'BUTT JOINT',cls:'l3'},{id:'dowel',label:'DOWEL JOINT',cls:'l3'},
+        {id:'dovetail',label:'DOVETAIL',cls:'l3'},{id:'mortise',label:'MORTISE & TENON',cls:'l3'},
+      ]},
+      { id:'finishing', label:'FINISHING', cls:'l2', children:[
+        {id:'sanding',label:'SANDING GRITS',cls:'l3'},{id:'staining',label:'STAINING',cls:'l3'},
+        {id:'varnish',label:'VARNISH & LACQUER',cls:'l3'},{id:'painting-wd',label:'PAINTING WOOD',cls:'l3'},
+      ]},
+    ]},
+    { id:'electronics', label:'ELECTRONICS', cls:'l1', children:[
+      { id:'elec-basics', label:'ELECTRONICS BASICS', cls:'l2', children:[
+        {id:'ohms',label:"OHM'S LAW",cls:'l3'},{id:'components',label:'COMPONENTS',cls:'l3'},
+        {id:'breadboard',label:'BREADBOARDING',cls:'l3'},{id:'soldering',label:'SOLDERING',cls:'l3'},
+      ]},
+      { id:'arduino', label:'ARDUINO', cls:'l2', children:[
+        {id:'io',label:'DIGITAL / ANALOG I/O',cls:'l3'},{id:'pwm',label:'PWM',cls:'l3'},
+        {id:'sensors',label:'SENSORS',cls:'l3'},{id:'motors',label:'SERVO & DC MOTORS',cls:'l3'},
+      ]},
+      { id:'rpi', label:'RASPBERRY PI', cls:'l2', children:[
+        {id:'gpio',label:'GPIO',cls:'l3'},{id:'linux-rpi',label:'LINUX BASICS',cls:'l3'},{id:'camera',label:'CAMERA MODULE',cls:'l3'},
+      ]},
+    ]},
+    { id:'printing3d', label:'3D PRINTING', cls:'l1', children:[
+      { id:'fdm', label:'FDM PRINTING', cls:'l2', children:[
+        {id:'bed-level',label:'BED LEVELING',cls:'l3'},{id:'slicing',label:'SLICING (CURA/PRUSA)',cls:'l3'},
+        {id:'supports',label:'SUPPORTS',cls:'l3'},{id:'infill',label:'INFILL & WALLS',cls:'l3'},
+      ]},
+      { id:'materials', label:'FILAMENT MATERIALS', cls:'l2', children:[
+        {id:'pla',label:'PLA',cls:'l3'},{id:'petg',label:'PETG',cls:'l3'},{id:'abs',label:'ABS / ASA',cls:'l3'},{id:'tpu',label:'TPU (FLEXIBLE)',cls:'l3'},
+      ]},
+      { id:'design3d', label:'DESIGN FOR 3D PRINT', cls:'l2', children:[
+        {id:'tolerances',label:'TOLERANCES',cls:'l3'},{id:'overhangs',label:'OVERHANGS',cls:'l3'},{id:'post-proc',label:'POST PROCESSING',cls:'l3'},
+      ]},
+    ]},
+    { id:'home-repair', label:'HOME REPAIR', cls:'l1', children:[
+      { id:'plumbing', label:'BASIC PLUMBING', cls:'l2', children:[
+        {id:'pipes',label:'PIPE TYPES',cls:'l3'},{id:'fittings',label:'FITTINGS',cls:'l3'},{id:'leaks',label:'FIX LEAKS',cls:'l3'},
+      ]},
+      { id:'electr-home', label:'HOME ELECTRICAL', cls:'l2', children:[
+        {id:'outlets',label:'OUTLETS & SWITCHES',cls:'l3'},{id:'breaker',label:'CIRCUIT BREAKER',cls:'l3'},{id:'lighting-inst',label:'LIGHT INSTALLATION',cls:'l3'},
+      ]},
+      { id:'painting-home', label:'PAINTING & WALLS', cls:'l2', children:[
+        {id:'prep',label:'SURFACE PREP',cls:'l3'},{id:'primer',label:'PRIMING',cls:'l3'},
+        {id:'roll',label:'ROLLING TECHNIQUE',cls:'l3'},{id:'drywall',label:'DRYWALL PATCHING',cls:'l3'},
+      ]},
+    ]},
+  ]};
+
+  trees['video'] = { id:'root', label:'VIDEO EDITING', cls:'root', children:[
+    { id:'fundamentals', label:'FUNDAMENTALS', cls:'l1', children:[
+      { id:'timeline', label:'TIMELINE BASICS', cls:'l2', children:[
+        {id:'clips',label:'CLIPS & TRACKS',cls:'l3'},{id:'trim',label:'TRIM & SPLIT',cls:'l3'},
+        {id:'ripple',label:'RIPPLE & ROLL EDIT',cls:'l3'},{id:'slip',label:'SLIP & SLIDE EDIT',cls:'l3'},
+      ]},
+      { id:'import', label:'MEDIA MANAGEMENT', cls:'l2', children:[
+        {id:'ingest',label:'INGEST & PROXIES',cls:'l3'},{id:'bins',label:'BINS & FOLDERS',cls:'l3'},{id:'metadata',label:'METADATA & LABELS',cls:'l3'},
+      ]},
+      { id:'export', label:'EXPORT & DELIVERY', cls:'l2', children:[
+        {id:'codecs',label:'CODECS (H.264 / HEVC)',cls:'l3'},{id:'formats',label:'FILE FORMATS',cls:'l3'},
+        {id:'presets',label:'EXPORT PRESETS',cls:'l3'},{id:'queues',label:'RENDER QUEUES',cls:'l3'},
+      ]},
+    ]},
+    { id:'software', label:'SOFTWARE', cls:'l1', children:[
+      { id:'premiere', label:'PREMIERE PRO', cls:'l2', children:[
+        {id:'pr-seq',label:'SEQUENCES',cls:'l3'},{id:'pr-lumetri',label:'LUMETRI COLOR',cls:'l3'},
+        {id:'pr-ess',label:'ESSENTIAL GRAPHICS',cls:'l3'},{id:'pr-ae',label:'DYNAMIC LINK (AE)',cls:'l3'},
+      ]},
+      { id:'resolve', label:'DAVINCI RESOLVE', cls:'l2', children:[
+        {id:'dr-cut',label:'CUT PAGE',cls:'l3'},{id:'dr-edit',label:'EDIT PAGE',cls:'l3'},
+        {id:'dr-fusion',label:'FUSION PAGE',cls:'l3'},{id:'dr-color',label:'COLOR PAGE',cls:'l3'},{id:'dr-fairlight',label:'FAIRLIGHT (AUDIO)',cls:'l3'},
+      ]},
+      { id:'finalcut', label:'FINAL CUT PRO', cls:'l2', children:[
+        {id:'fc-mag',label:'MAGNETIC TIMELINE',cls:'l3'},{id:'fc-roles',label:'ROLES',cls:'l3'},{id:'fc-multicam',label:'MULTICAM EDITING',cls:'l3'},
+      ]},
+    ]},
+    { id:'storytelling', label:'STORYTELLING & PACING', cls:'l1', children:[
+      { id:'cuts', label:'CUT TYPES', cls:'l2', children:[
+        {id:'jump',label:'JUMP CUT',cls:'l3'},{id:'match',label:'MATCH CUT',cls:'l3'},
+        {id:'jl',label:'J-CUT & L-CUT',cls:'l3'},{id:'smash',label:'SMASH CUT',cls:'l3'},
+      ]},
+      { id:'pacing', label:'PACING & RHYTHM', cls:'l2', children:[
+        {id:'beat',label:'BEAT SYNC',cls:'l3'},{id:'tension',label:'TENSION BUILDING',cls:'l3'},{id:'montage',label:'MONTAGE',cls:'l3'},
+      ]},
+      { id:'narrative', label:'NARRATIVE STRUCTURE', cls:'l2', children:[
+        {id:'three-act',label:'THREE ACT STRUCTURE',cls:'l3'},{id:'broll',label:'B-ROLL USAGE',cls:'l3'},{id:'interviews',label:'INTERVIEW EDITING',cls:'l3'},
+      ]},
+    ]},
+    { id:'color', label:'COLOR GRADING', cls:'l1', children:[
+      { id:'correction', label:'COLOR CORRECTION', cls:'l2', children:[
+        {id:'wb',label:'WHITE BALANCE',cls:'l3'},{id:'exposure',label:'EXPOSURE',cls:'l3'},{id:'scopes',label:'WAVEFORM / VECTORSCOPE',cls:'l3'},
+      ]},
+      { id:'grading', label:'CREATIVE GRADING', cls:'l2', children:[
+        {id:'luts',label:'LUTs',cls:'l3'},{id:'nodes',label:'NODE WORKFLOW',cls:'l3'},
+        {id:'log',label:'LOG FOOTAGE',cls:'l3'},{id:'film-look',label:'FILM LOOK',cls:'l3'},
+      ]},
+    ]},
+    { id:'audio', label:'AUDIO EDITING', cls:'l1', children:[
+      { id:'audio-basics', label:'AUDIO BASICS', cls:'l2', children:[
+        {id:'levels',label:'LEVELS & GAIN',cls:'l3'},{id:'sync',label:'SYNC (CLAPPER)',cls:'l3'},{id:'channels',label:'CHANNELS (MONO/STEREO)',cls:'l3'},
+      ]},
+      { id:'audio-clean', label:'AUDIO CLEANUP', cls:'l2', children:[
+        {id:'noise',label:'NOISE REDUCTION',cls:'l3'},{id:'eq-aud',label:'EQ',cls:'l3'},{id:'compress-aud',label:'COMPRESSION',cls:'l3'},
+      ]},
+      { id:'audio-design', label:'SOUND DESIGN', cls:'l2', children:[
+        {id:'sfx',label:'SFX & FOLEY',cls:'l3'},{id:'music-sync',label:'MUSIC SYNC',cls:'l3'},{id:'ambience',label:'AMBIENCE',cls:'l3'},
+      ]},
+    ]},
+    { id:'vfx-vid', label:'VFX & COMPOSITING', cls:'l1', children:[
+      { id:'keying', label:'KEYING', cls:'l2', children:[
+        {id:'chroma',label:'CHROMA KEY',cls:'l3'},{id:'luma',label:'LUMA KEY',cls:'l3'},{id:'roto',label:'ROTOSCOPING',cls:'l3'},
+      ]},
+      { id:'tracking', label:'MOTION TRACKING', cls:'l2', children:[
+        {id:'2d-track',label:'2D TRACK',cls:'l3'},{id:'3d-track',label:'3D CAMERA TRACK',cls:'l3'},{id:'planar',label:'PLANAR TRACK',cls:'l3'},
+      ]},
+      { id:'titles', label:'TITLES & GRAPHICS', cls:'l2', children:[
+        {id:'lower3',label:'LOWER THIRDS',cls:'l3'},{id:'kinetic',label:'KINETIC TYPE',cls:'l3'},{id:'screen-rep',label:'SCREEN REPLACEMENTS',cls:'l3'},
+      ]},
+    ]},
+    { id:'content', label:'CONTENT TYPES', cls:'l1', children:[
+      { id:'social', label:'SOCIAL MEDIA', cls:'l2', children:[
+        {id:'short',label:'SHORT FORM (REELS/SHORTS)',cls:'l3'},{id:'thumb',label:'THUMBNAIL DESIGN',cls:'l3'},{id:'caption',label:'CAPTIONS & SUBTITLES',cls:'l3'},
+      ]},
+      { id:'film', label:'FILM & DOCUMENTARY', cls:'l2', children:[
+        {id:'narrative-f',label:'NARRATIVE FILM',cls:'l3'},{id:'doc',label:'DOCUMENTARY',cls:'l3'},{id:'music-vid',label:'MUSIC VIDEO',cls:'l3'},
+      ]},
+    ]},
+  ]};
+
+  trees['motion'] = { id:'root', label:'MOTION GRAPHICS', cls:'root', children:[
+    { id:'principles', label:'ANIMATION PRINCIPLES', cls:'l1', children:[
+      { id:'12-principles', label:'12 PRINCIPLES', cls:'l2', children:[
+        {id:'ease',label:'EASE IN / EASE OUT',cls:'l3'},{id:'antic',label:'ANTICIPATION',cls:'l3'},
+        {id:'squash',label:'SQUASH & STRETCH',cls:'l3'},{id:'follow',label:'FOLLOW THROUGH',cls:'l3'},
+        {id:'arc',label:'ARCS',cls:'l3'},{id:'timing',label:'TIMING',cls:'l3'},
+      ]},
+      { id:'design-motion', label:'DESIGN IN MOTION', cls:'l2', children:[
+        {id:'rhythm-m',label:'RHYTHM & TEMPO',cls:'l3'},{id:'staging',label:'STAGING',cls:'l3'},{id:'secondary',label:'SECONDARY ACTION',cls:'l3'},
+      ]},
+    ]},
+    { id:'after-effects', label:'AFTER EFFECTS', cls:'l1', children:[
+      { id:'ae-core', label:'CORE TOOLS', cls:'l2', children:[
+        {id:'comp',label:'COMPOSITIONS',cls:'l3'},{id:'keyframes-ae',label:'KEYFRAMES',cls:'l3'},
+        {id:'graph-ed-ae',label:'GRAPH EDITOR',cls:'l3'},{id:'precomps',label:'PRECOMPS',cls:'l3'},
+      ]},
+      { id:'ae-expressions', label:'EXPRESSIONS', cls:'l2', children:[
+        {id:'wiggle',label:'WIGGLE()',cls:'l3'},{id:'loopout',label:'LOOPOUT()',cls:'l3'},
+        {id:'value-at-time',label:'VALUEATTIME()',cls:'l3'},{id:'index',label:'INDEX',cls:'l3'},
+      ]},
+      { id:'ae-shapes', label:'SHAPE LAYERS', cls:'l2', children:[
+        {id:'paths',label:'PATHS & TRIM PATHS',cls:'l3'},{id:'repeater',label:'REPEATER',cls:'l3'},{id:'shape-ops',label:'SHAPE OPERATORS',cls:'l3'},
+      ]},
+      { id:'ae-text', label:'TEXT ANIMATION', cls:'l2', children:[
+        {id:'text-anim',label:'TEXT ANIMATORS',cls:'l3'},{id:'per-char',label:'PER-CHARACTER 3D',cls:'l3'},{id:'kinetic-ae',label:'KINETIC TYPOGRAPHY',cls:'l3'},
+      ]},
+      { id:'ae-plugins', label:'PLUGINS', cls:'l2', children:[
+        {id:'flow',label:'FLOW',cls:'l3'},{id:'mt-mograph',label:'MOTION TOOLS',cls:'l3'},
+        {id:'element3d',label:'ELEMENT 3D',cls:'l3'},{id:'saber',label:'SABER',cls:'l3'},
+      ]},
+    ]},
+    { id:'design-skills', label:'DESIGN SKILLS', cls:'l1', children:[
+      { id:'layout-m', label:'LAYOUT & COMPOSITION', cls:'l2', children:[
+        {id:'grid-m',label:'GRID SYSTEMS',cls:'l3'},{id:'hierarchy-m',label:'VISUAL HIERARCHY',cls:'l3'},{id:'rule3-m',label:'RULE OF THIRDS',cls:'l3'},
+      ]},
+      { id:'type-motion', label:'TYPOGRAPHY IN MOTION', cls:'l2', children:[
+        {id:'font-choice',label:'FONT SELECTION',cls:'l3'},{id:'tracking-m',label:'TRACKING & LEADING',cls:'l3'},{id:'reveal',label:'TEXT REVEALS',cls:'l3'},
+      ]},
+      { id:'color-m', label:'COLOR IN MOTION', cls:'l2', children:[
+        {id:'palette-m',label:'PALETTE SELECTION',cls:'l3'},{id:'contrast-m',label:'CONTRAST',cls:'l3'},{id:'brand-m',label:'BRAND COLORS',cls:'l3'},
+      ]},
+    ]},
+    { id:'techniques', label:'TECHNIQUES', cls:'l1', children:[
+      { id:'2d-anim', label:'2D ANIMATION', cls:'l2', children:[
+        {id:'flat-anim',label:'FLAT DESIGN ANIM',cls:'l3'},{id:'cutout',label:'CUTOUT ANIMATION',cls:'l3'},
+        {id:'frame-by',label:'FRAME BY FRAME',cls:'l3'},{id:'morph',label:'SHAPE MORPHING',cls:'l3'},
+      ]},
+      { id:'3d-motion', label:'3D IN MOTION', cls:'l2', children:[
+        {id:'cinema4d',label:'CINEMA 4D',cls:'l3'},{id:'blender-mg',label:'BLENDER (GREASE PENCIL)',cls:'l3'},{id:'c4d-ae',label:'C4D → AE WORKFLOW',cls:'l3'},
+      ]},
+      { id:'ui-anim', label:'UI ANIMATION', cls:'l2', children:[
+        {id:'micro',label:'MICRO-INTERACTIONS',cls:'l3'},{id:'lottie-exp',label:'LOTTIE EXPORT',cls:'l3'},{id:'figma-anim',label:'FIGMA SMART ANIMATE',cls:'l3'},
+      ]},
+    ]},
+    { id:'compositing', label:'COMPOSITING', cls:'l1', children:[
+      { id:'layers', label:'LAYER TYPES', cls:'l2', children:[
+        {id:'null',label:'NULL OBJECTS',cls:'l3'},{id:'adj',label:'ADJUSTMENT LAYERS',cls:'l3'},{id:'solid',label:'SOLIDS',cls:'l3'},
+      ]},
+      { id:'blend-modes', label:'BLEND MODES & EFFECTS', cls:'l2', children:[
+        {id:'screen',label:'SCREEN / MULTIPLY',cls:'l3'},{id:'add',label:'ADD / OVERLAY',cls:'l3'},
+        {id:'fractal',label:'FRACTAL NOISE',cls:'l3'},{id:'glow',label:'GLOW & BLUR',cls:'l3'},
+      ]},
+      { id:'masking', label:'MASKING & MATTES', cls:'l2', children:[
+        {id:'track-matte',label:'TRACK MATTES',cls:'l3'},{id:'masks',label:'MASKS',cls:'l3'},{id:'invert',label:'INVERT MATTE',cls:'l3'},
+      ]},
+    ]},
+    { id:'workflow', label:'WORKFLOW & OUTPUT', cls:'l1', children:[
+      { id:'org', label:'PROJECT ORGANISATION', cls:'l2', children:[
+        {id:'folders-ae',label:'FOLDER STRUCTURE',cls:'l3'},{id:'naming',label:'NAMING CONVENTIONS',cls:'l3'},{id:'templates',label:'MOTION TEMPLATES',cls:'l3'},
+      ]},
+      { id:'render', label:'RENDERING', cls:'l2', children:[
+        {id:'render-q',label:'RENDER QUEUE',cls:'l3'},{id:'amc',label:'ADOBE MEDIA ENCODER',cls:'l3'},{id:'formats-mg',label:'FORMATS (WEBM / GIF / MP4)',cls:'l3'},
+      ]},
+      { id:'collab', label:'CLIENT WORKFLOW', cls:'l2', children:[
+        {id:'versioning',label:'VERSIONING',cls:'l3'},{id:'feedback',label:'FEEDBACK ROUNDS',cls:'l3'},{id:'handoff',label:'HANDOFF & SPECS',cls:'l3'},
+      ]},
+    ]},
+  ]};
+
+
+// metadata
+const META = {
+  design:  { title:'Graphic Design',   emoji:'🎨' },
+  python:  { title:'Python',            emoji:'🐍' },
+  blender: { title:'Blender 3D',        emoji:'🧊' },
+  music:   { title:'Music Production',  emoji:'🎵' },
+  japanese:{ title:'Japanese',          emoji:'🇯🇵' },
+  diy:     { title:'DIY & Making',      emoji:'🔧' },
+  video:   { title:'Video Editing',     emoji:'🎬' },
+  motion:  { title:'Motion Graphics',   emoji:'✨' },
+};
+
+// ── progress store per tree ───────────────────────────────────────────────
+const progressStore = {};
+
+// ── engine state ─────────────────────────────────────────────────────────
+let currentKey = null;
+let allNodes = [], elMap = {};
+let scale=1, tx=0, ty=0;
+const MIN_SCALE=0.15, MAX_SCALE=3, STEP=0.15;
+
+const hub       = document.getElementById('hub');
+const treeView  = document.getElementById('tree-view');
+const treeScope = document.getElementById('tree-scope');
+const viewport  = document.getElementById('viewport');
+const scene     = document.getElementById('scene');
+const page      = document.getElementById('page');
+const zoomLabel = document.getElementById('zoom-label');
+const treeTitle = document.getElementById('tree-title');
+
+function applyTransform() {
+  scene.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+  zoomLabel.textContent = Math.round(scale*100)+'%';
+}
+
+// ── open a tree ───────────────────────────────────────────────────────────
+function openTree(key) {
+  currentKey = key;
+  const meta = META[key];
+
+  // apply theme
+  treeScope.dataset.tree = key;
+
+  // set title
+  treeTitle.innerHTML = `<span class="t-emoji">${meta.emoji}</span>${meta.title}`;
+
+  // clear old nodes
+  allNodes.forEach(n => { if(elMap[n.id]) elMap[n.id].wrap.remove(); });
+  allNodes = []; elMap = {};
+
+  // restore saved progress
+  const saved = progressStore[key] || {};
+
+  // flatten tree
+  function flatten(n, a=[]) { a.push(n); (n.children||[]).forEach(c=>flatten(c,a)); return a; }
+  allNodes = flatten(trees[key]);
+
+  // restore checked state
+  allNodes.forEach(n => { n.checked = saved[n.id] || false; });
+
+  // build DOM
+  function makeEl(node) {
+    const wrap = document.createElement('div');
+    wrap.className = `node ${node.cls}`;
+    wrap.style.visibility='hidden'; wrap.style.left='-9999px'; wrap.style.top='-9999px';
+    const box = document.createElement('div'); box.className='box';
+    if(node.checked) box.classList.add('checked');
+    const ck  = document.createElement('div'); ck.className='ck'; ck.innerHTML='✓';
+    const lbl = document.createElement('div'); lbl.className='lbl'; lbl.textContent=node.label;
+    box.appendChild(ck); box.appendChild(lbl); wrap.appendChild(box); page.appendChild(wrap);
+    return wrap;
+  }
+  allNodes.forEach(n => { elMap[n.id] = { wrap: makeEl(n), box: null }; elMap[n.id].box = elMap[n.id].wrap.querySelector('.box'); });
+
+  // show tree view
+  hub.style.display = 'none';
+  treeView.style.display = 'block';
+
+  // clear canvas
+  const cv = document.getElementById('cv');
+  cv.width=0; cv.height=0;
+
+  // layout after paint
+  requestAnimationFrame(()=>requestAnimationFrame(doLayout));
+
+  buildPaths();
+  updateProgress();
+  setupInteractions();
+}
+
+// ── layout ────────────────────────────────────────────────────────────────
+function doLayout() {
+  allNodes.forEach(n => { const r=elMap[n.id].wrap.getBoundingClientRect(); n.w=r.width; n.h=r.height; });
+  const V_GAP=100, H_GAP=12, PAD_X=60, PAD_Y=50, TITLE_H=90;
+  function depthY(d) { return TITLE_H+PAD_Y+d*V_GAP; }
+  function assignDepth(node,d) { node.depth=d; (node.children||[]).forEach(c=>assignDepth(c,d+1)); }
+  assignDepth(trees[currentKey], 0);
+  function layoutSubtree(node, startX) {
+    if(!node.children||node.children.length===0) { node.x=startX+node.w/2; return node.w; }
+    let cursor=startX;
+    node.children.forEach((child,i) => { if(i>0)cursor+=H_GAP; cursor+=layoutSubtree(child,cursor); });
+    const spanW=cursor-startX;
+    const fc=node.children[0], lc=node.children[node.children.length-1];
+    node.x=(fc.x-fc.w/2+lc.x+lc.w/2)/2;
+    return spanW;
+  }
+  const totalW = layoutSubtree(trees[currentKey], 0);
+  trees[currentKey].x = totalW/2;
+  allNodes.forEach(n => { n.y = depthY(n.depth); });
+  const maxDepth = Math.max(...allNodes.map(n=>n.depth));
+  const pageW=totalW+PAD_X*2, pageH=depthY(maxDepth)+60;
+  page.style.width=pageW+'px'; page.style.height=pageH+'px';
+  const cv=document.getElementById('cv'); cv.width=pageW; cv.height=pageH;
+  allNodes.forEach(n => { n.x += PAD_X; });
+  allNodes.forEach(n => { const {wrap}=elMap[n.id]; wrap.style.left=n.x+'px'; wrap.style.top=n.y+'px'; wrap.style.visibility='visible'; });
+  const ctx=cv.getContext('2d');
+  const lineColor = getComputedStyle(treeScope).getPropertyValue('--line-color').trim();
+  ctx.strokeStyle = lineColor; ctx.lineWidth=1.8;
+  function wb(v,a=2){ return v+(Math.random()-.5)*a; }
+  function drawLine(x1,y1,x2,y2) { ctx.beginPath(); ctx.moveTo(wb(x1),wb(y1)); const mx=(x1+x2)/2+(Math.random()-.5)*5,my=(y1+y2)/2+(Math.random()-.5)*3; ctx.quadraticCurveTo(wb(mx),wb(my),wb(x2),wb(y2)); ctx.stroke(); }
+  function drawLines(node) { (node.children||[]).forEach(c => { drawLine(node.x,node.y,c.x,c.y); drawLines(c); }); }
+  drawLines(trees[currentKey]);
+  requestAnimationFrame(() => {
+    const vw=viewport.clientWidth||window.innerWidth, vh=viewport.clientHeight||window.innerHeight;
+    scale=Math.min(vw/pageW,vh/pageH)*0.96; tx=(vw-pageW*scale)/2; ty=(vh-pageH*scale)/2; applyTransform();
+  });
+}
+
+// ── check logic ───────────────────────────────────────────────────────────
+function parentOf(targetId, node=trees[currentKey], parent=null) {
+  if(node.id===targetId) return parent;
+  for(const c of(node.children||[])) { const r=parentOf(targetId,c,node); if(r!==undefined)return r; }
+  return undefined;
+}
+function allChildrenChecked(node) { return(node.children||[]).every(c=>c.checked&&allChildrenChecked(c)); }
+function setChecked(node,val) { node.checked=val; val?elMap[node.id].box.classList.add('checked'):elMap[node.id].box.classList.remove('checked'); }
+function cascadeDown(node,val) { (node.children||[]).forEach(c => { setChecked(c,val); cascadeDown(c,val); }); }
+function propagateUp(nodeId) { const parent=parentOf(nodeId); if(!parent)return; setChecked(parent,allChildrenChecked(parent)); propagateUp(parent.id); }
+
+function setupInteractions() {
+  allNodes.forEach(node => {
+    elMap[node.id].box.addEventListener('click', () => {
+      const val=!node.checked; setChecked(node,val); cascadeDown(node,val); propagateUp(node.id); updateProgress(); saveProgress();
+    });
+  });
+}
+
+function saveProgress() {
+  const saved = {};
+  allNodes.forEach(n => { if(n.checked) saved[n.id]=true; });
+  progressStore[currentKey] = saved;
+}
+
+// ── progress ──────────────────────────────────────────────────────────────
+const leaves_fn = () => allNodes.filter(n=>!n.children||n.children.length===0);
+function updateProgress() {
+  const leaves=leaves_fn(), done=leaves.filter(n=>n.checked).length, pct=Math.round(done/leaves.length*100);
+  document.getElementById('pTxt').textContent=`${done} / ${leaves.length} done`;
+  document.getElementById('pFill').style.width=pct+'%';
+  document.getElementById('pPct').textContent=pct+'%';
+}
+
+// ── search ────────────────────────────────────────────────────────────────
+function buildPaths() {
+  function walk(node,ancestors) { node._path=ancestors.slice(); (node.children||[]).forEach(c=>walk(c,[...ancestors,node.label])); }
+  walk(trees[currentKey],[]);
+}
+const searchInput=document.getElementById('search-input'), searchResults=document.getElementById('search-results'), searchClear=document.getElementById('search-clear');
+function highlightMatch(text,query) {
+  const idx=text.toLowerCase().indexOf(query.toLowerCase());
+  if(idx===-1) return document.createTextNode(text);
+  const span=document.createElement('span');
+  span.appendChild(document.createTextNode(text.slice(0,idx)));
+  const mark=document.createElement('mark'); mark.textContent=text.slice(idx,idx+query.length);
+  span.appendChild(mark); span.appendChild(document.createTextNode(text.slice(idx+query.length)));
+  return span;
+}
+function clearSearch() {
+  searchInput.value=''; searchResults.style.display='none'; searchResults.innerHTML=''; searchClear.style.display='none';
+  allNodes.forEach(n=>{ elMap[n.id].wrap.classList.remove('node-found','node-dimmed'); });
+}
+function doSearch(query) {
+  query=query.trim(); searchClear.style.display=query?'block':'none';
+  if(!query){clearSearch();return;}
+  const matches=allNodes.filter(n=>n.label.toLowerCase().includes(query.toLowerCase()));
+  allNodes.forEach(n=>{ elMap[n.id].wrap.classList.remove('node-found','node-dimmed'); if(matches.length>0){ if(matches.includes(n))elMap[n.id].wrap.classList.add('node-found'); else elMap[n.id].wrap.classList.add('node-dimmed'); } });
+  searchResults.innerHTML=''; searchResults.style.display='block';
+  if(matches.length===0){searchResults.innerHTML='<div class="search-no-results">No results found</div>';return;}
+  matches.slice(0,12).forEach(node=>{
+    const item=document.createElement('div'); item.className='search-result-item';
+    const labelEl=document.createElement('div'); labelEl.className='sr-label'; labelEl.appendChild(highlightMatch(node.label,query)); item.appendChild(labelEl);
+    if(node._path.length){ const pathEl=document.createElement('div'); pathEl.className='sr-path'; pathEl.textContent=node._path.join(' › '); item.appendChild(pathEl); }
+    item.addEventListener('click',()=>{ panToNode(node); searchResults.style.display='none'; });
+    searchResults.appendChild(item);
+  });
+  if(matches.length>12){ const more=document.createElement('div'); more.className='search-no-results'; more.textContent=`+${matches.length-12} more`; searchResults.appendChild(more); }
+}
+function panToNode(node) {
+  const vw=viewport.clientWidth,vh=viewport.clientHeight,TS=1.4,tTx=vw/2-node.x*TS,tTy=vh/2-node.y*TS,ss=scale,stx=tx,sty=ty,DUR=520;
+  let t0=null;
+  function ease(t){return t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
+  function af(ts){
+    if(!t0)t0=ts; const raw=Math.min((ts-t0)/DUR,1),t=ease(raw);
+    scale=ss+(TS-ss)*t; tx=stx+(tTx-stx)*t; ty=sty+(tTy-sty)*t;
+    const blur=Math.sin(raw*Math.PI)*8; scene.style.filter=blur>0.3?`blur(${blur.toFixed(1)}px)`:'';
+    applyTransform();
+    if(raw<1){requestAnimationFrame(af);}else{scale=TS;tx=tTx;ty=tTy;scene.style.filter='';applyTransform();const w=elMap[node.id].wrap;w.classList.remove('node-found');void w.offsetWidth;w.classList.add('node-found');}
+  }
+  requestAnimationFrame(af);
+}
+searchInput.addEventListener('input',e=>doSearch(e.target.value));
+searchClear.addEventListener('click',()=>{clearSearch();searchInput.focus();});
+document.addEventListener('click',e=>{ if(!document.getElementById('search-bar').contains(e.target)) searchResults.style.display='none'; });
+searchInput.addEventListener('keydown',e=>{
+  if(e.key==='Escape')clearSearch();
+  if(e.key==='Enter'){ const f=allNodes.find(n=>n.label.toLowerCase().includes(searchInput.value.trim().toLowerCase())); if(f){panToNode(f);searchResults.style.display='none';} }
+});
+
+// ── zoom / pan ────────────────────────────────────────────────────────────
+function zoomAt(px,py,delta) {
+  const ns=Math.min(MAX_SCALE,Math.max(MIN_SCALE,scale+delta)); if(ns===scale)return;
+  tx=px-(px-tx)*(ns/scale); ty=py-(py-ty)*(ns/scale); scale=ns; applyTransform();
+}
+viewport.addEventListener('wheel',e=>{ e.preventDefault(); const r=viewport.getBoundingClientRect(); zoomAt(e.clientX-r.left,e.clientY-r.top,e.deltaY<0?STEP:-STEP); },{passive:false});
+function cz(d){zoomAt(viewport.clientWidth/2,viewport.clientHeight/2,d);}
+document.getElementById('zoomIn').addEventListener('click',()=>cz(+STEP));
+document.getElementById('zoomOut').addEventListener('click',()=>cz(-STEP));
+document.getElementById('zoomReset').addEventListener('click',()=>{
+  const vw=viewport.clientWidth||innerWidth,vh=viewport.clientHeight||innerHeight,pW=parseFloat(page.style.width)||scene.offsetWidth,pH=parseFloat(page.style.height)||scene.offsetHeight;
+  scale=Math.min(vw/pW,vh/pH)*0.96; tx=(vw-pW*scale)/2; ty=(vh-pH*scale)/2; applyTransform();
+});
+let dragging=false,dsx=0,dsy=0,dtx=0,dty=0;
+viewport.addEventListener('mousedown',e=>{ if(e.button!==0)return; dragging=true; dsx=e.clientX; dsy=e.clientY; dtx=tx; dty=ty; viewport.classList.add('dragging'); });
+window.addEventListener('mousemove',e=>{ if(!dragging)return; tx=dtx+(e.clientX-dsx); ty=dty+(e.clientY-dsy); applyTransform(); });
+window.addEventListener('mouseup',()=>{ dragging=false; viewport.classList.remove('dragging'); });
+let ltd=null,tmx=0,tmy=0;
+viewport.addEventListener('touchstart',e=>{ if(e.touches.length===2){ const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY; ltd=Math.hypot(dx,dy); tmx=(e.touches[0].clientX+e.touches[1].clientX)/2; tmy=(e.touches[0].clientY+e.touches[1].clientY)/2; }else if(e.touches.length===1){ dragging=true; dsx=e.touches[0].clientX; dsy=e.touches[0].clientY; dtx=tx; dty=ty; } },{passive:true});
+viewport.addEventListener('touchmove',e=>{ if(e.touches.length===2&&ltd!==null){ e.preventDefault(); const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY,dist=Math.hypot(dx,dy); zoomAt(tmx,tmy,(dist-ltd)/120); ltd=dist; }else if(e.touches.length===1&&dragging){ tx=dtx+(e.touches[0].clientX-dsx); ty=dty+(e.touches[0].clientY-dsy); applyTransform(); } },{passive:false});
+viewport.addEventListener('touchend',()=>{ ltd=null; dragging=false; });
+window.addEventListener('resize',()=>document.getElementById('zoomReset').click());
+
+// ── back button ───────────────────────────────────────────────────────────
+document.getElementById('back-btn').addEventListener('click',()=>{
+  saveProgress();
+  clearSearch();
+  treeView.style.display='none';
+  hub.style.display='flex';
+  // clear nodes from DOM
+  allNodes.forEach(n=>{ if(elMap[n.id]) elMap[n.id].wrap.remove(); });
+  allNodes=[]; elMap={};
+});
+
+// ── card clicks ───────────────────────────────────────────────────────────
+document.querySelectorAll('.card').forEach(card=>{
+  card.addEventListener('click',()=>openTree(card.dataset.key));
+});
+</script>
+</body>
+</html>
